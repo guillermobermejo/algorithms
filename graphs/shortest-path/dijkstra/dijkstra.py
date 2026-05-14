@@ -20,42 +20,45 @@ Otherwise, return the time it takes for the furthest node to receive the signal.
 '''
 Dijkstra Psuedocode
 
-FUNCTION Dijkstra(Graph, Start):
+DIJKSTRA(graph, start)
 
-    CREATE map Distance
-    CREATE map Previous
-    CREATE PriorityQueue PQ
+    dist ← empty map
+    prev ← empty map
 
-    FOR each Vertex in Graph:
-        Distance[Vertex] ← INFINITY
-        Previous[Vertex] ← NULL
-        INSERT (INFINITY, Vertex) INTO PQ
+    pq ← empty min-heap
 
-    Distance[Start] ← 0
-    INSERT (0, Start) INTO PQ   // or update if your PQ supports it
+    FOR each vertex v in graph:
+        dist[v] ← ∞
+        prev[v] ← null
 
-    WHILE PQ is not empty:
+    dist[start] ← 0
 
-        (CurrentDistance, U) ← EXTRACT-MIN(PQ)
+    INSERT (0, start) INTO pq
 
-        IF CurrentDistance > Distance[U]:
-            CONTINUE   // skip outdated entry
+    WHILE pq is not empty:
 
-        FOR each (Weight, V) in Graph[U]:
+        (dist_u, u) ← REMOVE-MIN(pq)
 
-            NewDistance ← Distance[U] + Weight
+        // Ignore outdated heap entries
+        IF dist_u > dist[u]:
+            CONTINUE
 
-            IF NewDistance < Distance[V]:
+        FOR each (weight, v) adjacent to u:
 
-                Distance[V] ← NewDistance
-                Previous[V] ← U
+            new_dist ← dist[u] + weight
 
-                INSERT (NewDistance, V) INTO PQ
+            IF new_dist < dist[v]:
 
-    RETURN Distance, Previous
+                dist[v] ← new_dist
+                prev[v] ← u
+
+                INSERT (new_dist, v) INTO pq
+
+    RETURN dist, prev
 '''
 
 from queue import PriorityQueue
+import heapq
 
 n = 8
 
@@ -96,29 +99,67 @@ def create_adjacency_list(num_nodes, lst):
         
     return adjacency
 
-def dijkstra(graph, start):
+
+# the standard
+
+def dijkstra_heapq(graph, start):
     dist = dict()
     prev = dict()
     
-    pq = PriorityQueue()
+    pq = []                                             # init
     
     for vertex in graph.keys():
         dist[vertex] = float('inf')
         prev[vertex] = None
-        pq.put((float('inf'), vertex))
-        
-    dist[start] = 0
     
-    while not pq.empty():
-        dist_u, u = pq.get()
+    dist[start] = 0
+    heapq.heappush(pq, (0, start))                      # <>.heappush(init, x)
+    
+    while len(pq) != 0:                                 # len(init)
+        dist_u, u = heapq.heappop(pq)                   # <>.heappop(init)
+        
+        # ignore paths to u that are greater than the current best path to u
+        if dist_u > dist[u]:
+            continue
         
         for dist_v, v in graph[u]:
-            distance = dist[u] + dist_v
+            new_dist_to_v = dist[u] + dist_v
             
-            if distance < dist[v]:
-                dist[v] = distance
+            if new_dist_to_v < dist[v]:
+                dist[v] = new_dist_to_v
                 prev[v] = u
-                pq.put((distance, v))
+                heapq.heappush(pq, (new_dist_to_v, v))  # <>.heappush(init, x)
+                
+    return dist, prev
+
+
+def dijkstra_priorityqueue(graph, start):
+    dist = dict()
+    prev = dict()
+    
+    pq = PriorityQueue()                                # init
+    
+    for vertex in graph.keys():
+        dist[vertex] = float('inf')
+        prev[vertex] = None
+    
+    dist[start] = 0
+    pq.put((0, start))                                  # init.put(x)
+    
+    while not pq.empty():                               # init.empty()
+        dist_u, u = pq.get()                            # init.get()
+        
+        # ignore paths to u that are greater than the current best path to u
+        if dist_u > dist[u]:
+            continue
+        
+        for dist_v, v in graph[u]:
+            new_dist_to_v = dist[u] + dist_v
+            
+            if new_dist_to_v < dist[v]:
+                dist[v] = new_dist_to_v
+                prev[v] = u
+                pq.put((new_dist_to_v, v))              # init.put(x)
                 
     return dist, prev
     
@@ -137,7 +178,7 @@ if __name__ == "__main__":
     start = k
 
     adjacency_list = create_adjacency_list(n, times)
-    dist, prev = dijkstra(adjacency_list, start)
+    dist, prev = dijkstra_heapq(adjacency_list, start)
     
     furthest = max(dist, key=dist.get)
     
